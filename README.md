@@ -1,3 +1,15 @@
+# Gemstone Valley v3.3 — Auto Collect Production Fix
+
+## Fixed
+
+- Auto Collect now checks every unlocked factory before production.
+- Factories that are already full are cleared immediately.
+- Production room is recalculated after automatic collection.
+- Factories resume mining in the same tick after being emptied.
+- A factory that becomes full during a production tick is collected immediately.
+- Activating Auto Collect immediately clears every already-full unlocked factory.
+- Manual collection refreshes the full factory interface, preventing other factories from appearing stopped.
+
 # Gemstone Valley v3.2 — 24-Hour Auto Collect
 
 The left-side reward now activates **Auto Collect for 24 hours**.

@@ -210,21 +210,39 @@ function renderTop(){
  });
 }
 function tick(){
- const now=Date.now(),dt=Math.min(2,(now-S.last)/1000);S.last=now;
+ const now=Date.now();
+ const dt=Math.min(1,(now-S.last)/1000);
+ S.last=now;
+ const autoActive=(S.autoCollectUntil||0)>now;
+
  FACTORIES.forEach(f=>{
-  if(S.unlocked[f.name]){
-   const cap=storageCapacity(f);
-   const room=Math.max(0,cap-(S.stored[f.name]||0));
-   if(room>0){
-    const amount=Math.min(room,totalGps(f)*dt);
-    S.stored[f.name]=(S.stored[f.name]||0)+amount;
-   }
-   if((S.autoCollectUntil||0)>now && S.stored[f.name]>=cap){
-    collectFactoryAutomatically(f);
-   }
+  if(!S.unlocked[f.name])return;
+
+  const cap=storageCap(f);
+
+  // First clear any factory that is already full while Auto Collect is active.
+  // This must happen before calculating room, otherwise a full factory stays stopped.
+  if(autoActive && (S.stored[f.name]||0)>=cap){
+   collectFactoryAutomatically(f);
+  }
+
+  // Recalculate room after possible automatic collection.
+  const current=S.stored[f.name]||0;
+  const room=Math.max(0,cap-current);
+
+  if(room>0){
+   const amount=Math.min(room,totalGps(f)*dt);
+   S.stored[f.name]=current+amount;
+  }
+
+  // If this production tick filled the storage, collect it immediately.
+  if(autoActive && (S.stored[f.name]||0)>=cap){
+   collectFactoryAutomatically(f);
   }
  });
- renderTop()
+
+ renderTop();
+ updateLive();
 }
 
 const AUTO_COLLECT_DURATION=24*60*60*1000;
@@ -258,7 +276,13 @@ function redeemAutoCollect(){
   return
  }
  S.autoCollectUntil=Date.now()+AUTO_COLLECT_DURATION;
+ FACTORIES.forEach(f=>{
+  if(S.unlocked[f.name] && (S.stored[f.name]||0)>=storageCap(f)){
+   collectFactoryAutomatically(f);
+  }
+ });
  save(true);
+ render();
  updateDailyReward();
  toast("Auto Collect activated for 24 hours");
  window.GemCloud?.saveCloud(true)
