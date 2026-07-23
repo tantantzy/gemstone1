@@ -1,3 +1,18 @@
+# Gemstone Valley v3.0.1 Cache Fix
+
+This release fixes the browser loading the older registration script that still queried `public.profiles`.
+
+## Important upload steps
+
+1. Upload every file in this ZIP to the repository root.
+2. Keep your existing `config.js`.
+3. Delete the old root-level `auth.js` from GitHub.
+4. Confirm the repository contains `auth-v3.js`.
+5. Wait for GitHub Pages to redeploy.
+6. Open the signup page and press Ctrl+Shift+R.
+
+The HTML pages now load `auth-v3.js?v=3.0.1`, so the old cached authentication code cannot be reused.
+
 # Gemstone Valley v3
 
 This release uses one Supabase table only: `game_saves`.
