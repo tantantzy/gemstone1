@@ -10,7 +10,7 @@ const FACTORIES=[
 ];
 
 function newState(){
- const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},boostUntil:0,dailyClaimAt:0,last:Date.now()};
+ const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},boostUntil:0,autoCollectUntil:0,last:Date.now()};
  FACTORIES.forEach(f=>{
   s.gems[f.name]=0;
   s.stored[f.name]=0;
@@ -219,19 +219,17 @@ function tick(){
     const amount=Math.min(room,totalGps(f)*dt);
     S.stored[f.name]=(S.stored[f.name]||0)+amount;
    }
+   if((S.autoCollectUntil||0)>now && S.stored[f.name]>=cap){
+    collectFactoryAutomatically(f);
+   }
   }
  });
  renderTop()
 }
 
-const DAILY_COOLDOWN=24*60*60*1000;
-function bestUnlockedFactory(){
- let best=FACTORIES[0];
- FACTORIES.forEach(f=>{if(S.unlocked[f.name])best=f});
- return best
-}
-function dailyTimeLeft(){
- return Math.max(0,DAILY_COOLDOWN-(Date.now()-(S.dailyClaimAt||0)))
+const AUTO_COLLECT_DURATION=24*60*60*1000;
+function autoCollectTimeLeft(){
+ return Math.max(0,(S.autoCollectUntil||0)-Date.now())
 }
 function formatDailyTime(ms){
  const total=Math.ceil(ms/1000);
@@ -245,30 +243,32 @@ function updateDailyReward(){
  const title=document.getElementById("dailyRewardTitle");
  const timer=document.getElementById("dailyRewardTimer");
  if(!button||!title||!timer)return;
- const left=dailyTimeLeft();
- const ready=left<=0;
- button.disabled=false;
- button.classList.toggle("ready",ready);
- button.classList.toggle("cooldown",!ready);
- title.textContent=ready?"Redeem":"Daily Reward";
- timer.textContent=ready?"Tap to claim":formatDailyTime(left);
+ const left=autoCollectTimeLeft();
+ const active=left>0;
+ button.classList.toggle("active",active);
+ button.classList.toggle("ready",!active);
+ button.classList.toggle("cooldown",active);
+ title.textContent=active?"Auto Collect ON":"Auto Collect";
+ timer.textContent=active?formatDailyTime(left):"Redeem 24h";
 }
-function claimDailyReward(){
- const left=dailyTimeLeft();
+function redeemAutoCollect(){
+ const left=autoCollectTimeLeft();
  if(left>0){
-  toast(`Daily reward ready in ${formatDailyTime(left)}`);
+  toast(`Auto Collect active for ${formatDailyTime(left)}`);
   return
  }
- const factory=bestUnlockedFactory();
- const coinReward=Math.max(250,Math.floor(150+S.level*75));
- const gemReward=Math.max(25,Math.floor(15+S.level*5));
- S.coins+=coinReward;
- S.gems[factory.name]=(S.gems[factory.name]||0)+gemReward;
- S.dailyClaimAt=Date.now();
+ S.autoCollectUntil=Date.now()+AUTO_COLLECT_DURATION;
  save(true);
- toast(`Daily reward: ${fmt(coinReward)} coins + ${fmt(gemReward)} ${factory.name}`);
- renderTop();
+ updateDailyReward();
+ toast("Auto Collect activated for 24 hours");
  window.GemCloud?.saveCloud(true)
+}
+function collectFactoryAutomatically(factory){
+ const stored=S.stored[factory.name]||0;
+ if(stored<=0)return;
+ S.gems[factory.name]=(S.gems[factory.name]||0)+stored;
+ gainXp(stored);
+ S.stored[factory.name]=0;
 }
 
 function activateBoost(){S.boostUntil=Date.now()+60000;toast("×2 production active for 60 seconds");render()}
@@ -295,7 +295,7 @@ function load(){
     x.stored[f.name]=Math.min(cap,(x.stored[f.name]||0)+rate*offline*.5)
    }
   });
-  x.dailyClaimAt??=0;x.last=Date.now();return x
+  x.autoCollectUntil??=0;x.last=Date.now();return x
  }catch{return newState()}
 }
 let toastTimer;
@@ -303,8 +303,8 @@ function toast(t){
  const e=document.getElementById("toast");e.textContent=t;e.classList.add("show");
  clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove("show"),1700)
 }
-window.GemGame={getState:()=>JSON.parse(JSON.stringify(S)),setState:(n)=>{if(!n||typeof n!=="object")return;S=n;S.gems??={};S.stored??={};S.unlocked??={Quartz:true};S.machines??={};FACTORIES.forEach(f=>{S.gems[f.name]??=0;S.stored[f.name]??=0;S.machines[f.name]??=[{open:true,level:1},{open:false,level:1},{open:false,level:1}]});S.unlocked.Quartz=true;S.dailyClaimAt??=0;S.last=Date.now();save(true);render()},notify:(m)=>toast(m)};
-document.getElementById("dailyRewardBtn").onclick=claimDailyReward;
+window.GemGame={getState:()=>JSON.parse(JSON.stringify(S)),setState:(n)=>{if(!n||typeof n!=="object")return;S=n;S.gems??={};S.stored??={};S.unlocked??={Quartz:true};S.machines??={};FACTORIES.forEach(f=>{S.gems[f.name]??=0;S.stored[f.name]??=0;S.machines[f.name]??=[{open:true,level:1},{open:false,level:1},{open:false,level:1}]});S.unlocked.Quartz=true;S.autoCollectUntil??=0;S.last=Date.now();save(true);render()},notify:(m)=>toast(m)};
+document.getElementById("dailyRewardBtn").onclick=redeemAutoCollect;
 document.getElementById("boostBtn").onclick=activateBoost;
 document.getElementById("saveBtn").onclick=async()=>{save();if(window.GemCloud)await window.GemCloud.saveCloud(false)};
 (async()=>{

@@ -139,3 +139,9 @@ th{color:#cbbbd7}
 .toast{position:fixed;left:50%;bottom:76px;z-index:100;transform:translate(-50%,20px);opacity:0;padding:9px 13px;border-radius:10px;background:#0b0710;border:1px solid #704f83;font-size:12px;transition:.2s}.toast.show{transform:translate(-50%,0);opacity:1}
 @keyframes spin{to{transform:rotate(360deg)}}@keyframes travel{to{left:110%}}@keyframes belt{to{background-position:22px 0}}@keyframes bob{to{transform:translateY(-2px)}}@keyframes ore{to{left:50px}}
 @media(max-width:760px){.hero{grid-template-columns:1fr}.hero-card{min-height:270px}.dashboard-grid{grid-template-columns:1fr}.site-shell{padding:13px}.nav-links{gap:5px}.nav-link{padding:8px 9px}.machine-row{gap:5px}}
+
+.daily-reward.active{
+ border-color:#79f5a2;
+ background:linear-gradient(160deg,#194f36,#291632);
+ box-shadow:0 0 0 4px #17412e,0 0 22px rgba(80,240,145,.55)
+}

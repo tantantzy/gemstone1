@@ -1,3 +1,16 @@
+# Gemstone Valley v3.2 — 24-Hour Auto Collect
+
+The left-side reward now activates **Auto Collect for 24 hours**.
+
+During the active period:
+
+- Every unlocked factory continues mining normally.
+- When any factory reaches full storage capacity, its stored gems are automatically moved to inventory.
+- XP is awarded automatically using the normal rule: 2 collected gems = 1 XP.
+- The emptied factory immediately resumes production.
+- The reward button shows the remaining active time.
+- The reward can be activated again after the 24-hour period ends.
+
 # Gemstone Valley v3.1 — Daily Reward & Mobile Navigation Fix
 
 ## New in this release
