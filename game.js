@@ -257,4 +257,17 @@ function toast(t){
 window.GemGame={getState:()=>JSON.parse(JSON.stringify(S)),setState:(n)=>{if(!n||typeof n!=="object")return;S=n;S.gems??={};S.stored??={};S.unlocked??={Quartz:true};S.machines??={};FACTORIES.forEach(f=>{S.gems[f.name]??=0;S.stored[f.name]??=0;S.machines[f.name]??=[{open:true,level:1},{open:false,level:1},{open:false,level:1}]});S.unlocked.Quartz=true;S.last=Date.now();save(true);render()},notify:(m)=>toast(m)};
 document.getElementById("boostBtn").onclick=activateBoost;
 document.getElementById("saveBtn").onclick=async()=>{save();if(window.GemCloud)await window.GemCloud.saveCloud(false)};
-render();setInterval(tick,250);setInterval(()=>localStorage.setItem("gemValleyCompact",JSON.stringify(S)),10000);
+(async()=>{
+ const session=await window.GV?.requireAuth();
+ if(!session)return;
+ const account=document.getElementById("accountEmail");
+ if(account)account.textContent=session.user.email;
+ document.getElementById("logoutBtn")?.addEventListener("click",async()=>{
+  await window.GV.client.auth.signOut();location.href="index.html";
+ });
+ await window.GemCloud?.loadCloud(true);
+ render();
+ setInterval(tick,250);
+ setInterval(()=>localStorage.setItem("gemValleyCompact",JSON.stringify(S)),10000);
+ setInterval(()=>window.GemCloud?.saveCloud(true),30000);
+})();
