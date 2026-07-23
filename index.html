@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#140b21"><title>Gemstone Valley</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css"></head><body><div id="app">
+ <header class="topbar">
+  <div class="main-stats">
+   <div class="stat"><small>⭐ Player Level</small><strong id="levelText">1</strong><div class="xp"><i id="xpFill"></i></div></div>
+   <div class="stat"><small>🪙 Coins</small><strong id="coinsText">0</strong></div>
+   
+  </div>
+  <div class="resources" id="resources"></div>
+  <div class="account-row" id="signedOutHeaderActions">
+   <button type="button" class="header-auth-btn login-header-btn" id="loginHeaderBtn" aria-haspopup="dialog" aria-controls="authModal">Log In</button>
+   <button type="button" class="header-auth-btn signup-header-btn" id="signupHeaderBtn" aria-haspopup="dialog" aria-controls="authModal">Sign Up</button>
+  </div>
+  <div class="account-row hidden" id="signedInHeaderActions">
+   <button type="button" class="account-btn" id="accountBtn" aria-haspopup="dialog" aria-controls="authModal">👤 Account</button>
+  </div>
+ </header>
+
+ <main class="world" id="world"><div class="center-line"></div></main>
+
+ <button class="boost" id="boostBtn"><span>▶ AD</span><b>×2</b><span>BOOST</span></button>
+
+ <nav class="bottom">
+  <button class="nav"><span>🏪</span>Shop</button>
+  <button class="nav active"><span>🏭</span>Factory</button>
+  <button class="nav"><span>🗺️</span>Valley</button>
+  <button class="nav" id="saveBtn"><span>💾</span>Save</button>
+ </nav>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-backdrop" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle" aria-hidden="true">
+ <section class="auth-card">
+  <button type="button" class="close-auth" id="closeAuthBtn" aria-label="Close player account">×</button>
+  <h2 id="authTitle">Player Account</h2>
+  <p>Guest progress saves on this device. Configure Supabase for login and cloud saves.</p>
+  <div id="signedOutPanel">
+   <label for="authEmail">Email</label>
+   <input id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="player@example.com">
+   <label for="authPassword">Password</label>
+   <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters">
+   <div class="auth-actions">
+    <button type="button" class="auth-primary" id="signInBtn">Sign In</button>
+    <button type="button" class="auth-secondary" id="signUpBtn">Create Account</button>
+   </div>
+  </div>
+  <div id="signedInPanel" class="hidden">
+   <div class="auth-status">Signed in as <strong id="accountEmail"></strong></div>
+   <div class="cloud-actions">
+    <button type="button" class="auth-primary" id="cloudSaveBtn">Save Cloud</button>
+    <button type="button" class="auth-secondary" id="cloudLoadBtn">Load Cloud</button>
+   </div>
+   <div class="cloud-actions"><button type="button" class="auth-secondary" id="signOutBtn">Sign Out</button></div>
+  </div>
+  <div class="auth-status" id="cloudStatus" role="status" aria-live="polite">Guest mode active.</div>
+ </section>
+</div><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8"></script><script src="cloud.js"></script><script src="game.js"></script></body></html>
