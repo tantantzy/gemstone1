@@ -1,3 +1,15 @@
+# Gemstone Valley v3.1 — Daily Reward & Mobile Navigation Fix
+
+## New in this release
+
+- Added a left-side Daily Reward button.
+- The reward becomes available every 24 hours.
+- Claiming grants coins plus gems from the highest unlocked factory.
+- The countdown updates automatically.
+- Fixed bottom navigation alignment on mobile.
+- Ranks, Factory, Profile, and Save now use equal-width cells with centered icons and labels.
+- Added safe-area spacing for phones with gesture/navigation bars.
+
 # Gemstone Valley v3.0.1 Cache Fix
 
 This release fixes the browser loading the older registration script that still queried `public.profiles`.

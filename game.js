@@ -10,7 +10,7 @@ const FACTORIES=[
 ];
 
 function newState(){
- const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},boostUntil:0,last:Date.now()};
+ const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},boostUntil:0,dailyClaimAt:0,last:Date.now()};
  FACTORIES.forEach(f=>{
   s.gems[f.name]=0;
   s.stored[f.name]=0;
@@ -183,6 +183,7 @@ function renderTop(){
   const d=document.createElement("div");d.className="res";d.innerHTML=`<span style="color:${f.color}">${f.icon}</span><b>${f.name}<br>${fmt(S.gems[f.name])}</b>`;r.appendChild(d)
  });
  const left=Math.max(0,Math.ceil((S.boostUntil-Date.now())/1000));
+ updateDailyReward();
  document.getElementById("boostBtn").innerHTML=left?`<span>⚡ ACTIVE</span><b>×2</b><span>${left}s</span>`:`<span>▶ AD</span><b>×2</b><span>BOOST</span>`;
 
  FACTORIES.filter(f=>S.unlocked[f.name]).forEach(f=>{
@@ -222,6 +223,54 @@ function tick(){
  });
  renderTop()
 }
+
+const DAILY_COOLDOWN=24*60*60*1000;
+function bestUnlockedFactory(){
+ let best=FACTORIES[0];
+ FACTORIES.forEach(f=>{if(S.unlocked[f.name])best=f});
+ return best
+}
+function dailyTimeLeft(){
+ return Math.max(0,DAILY_COOLDOWN-(Date.now()-(S.dailyClaimAt||0)))
+}
+function formatDailyTime(ms){
+ const total=Math.ceil(ms/1000);
+ const h=Math.floor(total/3600);
+ const m=Math.floor((total%3600)/60);
+ const s=total%60;
+ return h>0?`${h}h ${m}m`:`${m}m ${s}s`
+}
+function updateDailyReward(){
+ const button=document.getElementById("dailyRewardBtn");
+ const title=document.getElementById("dailyRewardTitle");
+ const timer=document.getElementById("dailyRewardTimer");
+ if(!button||!title||!timer)return;
+ const left=dailyTimeLeft();
+ const ready=left<=0;
+ button.disabled=false;
+ button.classList.toggle("ready",ready);
+ button.classList.toggle("cooldown",!ready);
+ title.textContent=ready?"Redeem":"Daily Reward";
+ timer.textContent=ready?"Tap to claim":formatDailyTime(left);
+}
+function claimDailyReward(){
+ const left=dailyTimeLeft();
+ if(left>0){
+  toast(`Daily reward ready in ${formatDailyTime(left)}`);
+  return
+ }
+ const factory=bestUnlockedFactory();
+ const coinReward=Math.max(250,Math.floor(150+S.level*75));
+ const gemReward=Math.max(25,Math.floor(15+S.level*5));
+ S.coins+=coinReward;
+ S.gems[factory.name]=(S.gems[factory.name]||0)+gemReward;
+ S.dailyClaimAt=Date.now();
+ save(true);
+ toast(`Daily reward: ${fmt(coinReward)} coins + ${fmt(gemReward)} ${factory.name}`);
+ renderTop();
+ window.GemCloud?.saveCloud(true)
+}
+
 function activateBoost(){S.boostUntil=Date.now()+60000;toast("×2 production active for 60 seconds");render()}
 function save(silent=false){localStorage.setItem("gemValleyCompact",JSON.stringify(S));if(!silent)toast("Game saved locally")}
 function load(){
@@ -246,7 +295,7 @@ function load(){
     x.stored[f.name]=Math.min(cap,(x.stored[f.name]||0)+rate*offline*.5)
    }
   });
-  x.last=Date.now();return x
+  x.dailyClaimAt??=0;x.last=Date.now();return x
  }catch{return newState()}
 }
 let toastTimer;
@@ -254,7 +303,8 @@ function toast(t){
  const e=document.getElementById("toast");e.textContent=t;e.classList.add("show");
  clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove("show"),1700)
 }
-window.GemGame={getState:()=>JSON.parse(JSON.stringify(S)),setState:(n)=>{if(!n||typeof n!=="object")return;S=n;S.gems??={};S.stored??={};S.unlocked??={Quartz:true};S.machines??={};FACTORIES.forEach(f=>{S.gems[f.name]??=0;S.stored[f.name]??=0;S.machines[f.name]??=[{open:true,level:1},{open:false,level:1},{open:false,level:1}]});S.unlocked.Quartz=true;S.last=Date.now();save(true);render()},notify:(m)=>toast(m)};
+window.GemGame={getState:()=>JSON.parse(JSON.stringify(S)),setState:(n)=>{if(!n||typeof n!=="object")return;S=n;S.gems??={};S.stored??={};S.unlocked??={Quartz:true};S.machines??={};FACTORIES.forEach(f=>{S.gems[f.name]??=0;S.stored[f.name]??=0;S.machines[f.name]??=[{open:true,level:1},{open:false,level:1},{open:false,level:1}]});S.unlocked.Quartz=true;S.dailyClaimAt??=0;S.last=Date.now();save(true);render()},notify:(m)=>toast(m)};
+document.getElementById("dailyRewardBtn").onclick=claimDailyReward;
 document.getElementById("boostBtn").onclick=activateBoost;
 document.getElementById("saveBtn").onclick=async()=>{save();if(window.GemCloud)await window.GemCloud.saveCloud(false)};
 (async()=>{
