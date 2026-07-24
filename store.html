@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#140b21"><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css?v=4.1.0">
+<title>Store · Gemstone Valley</title>
+</head>
+<body>
+<div class="site-shell store-shell">
+ <nav class="site-nav">
+  <a class="brand" href="index.html">💎 Gemstone <span>Valley</span></a>
+  <div class="nav-links">
+   <a class="nav-link" href="play.html">Play</a>
+   <a class="nav-link" href="profile.html">Profile</a>
+  </div>
+ </nav>
+
+ <section class="store-hero panel">
+  <div>
+   <h1>🛒 Gemstone Store</h1>
+   <p>Buy gemstones with coins for factory requirements, or sell gems collected from your mining batches.</p>
+  </div>
+  <div class="store-balance">
+   <small>Coin Balance</small>
+   <strong id="storeCoins">0</strong>
+  </div>
+ </section>
+
+ <section class="store-section">
+  <div class="section-heading">
+   <div>
+    <h2>Buy Gemstones</h2>
+    <p>Only gemstones from factories you have already unlocked can be purchased.</p>
+   </div>
+  </div>
+  <div class="store-grid" id="buyGrid"></div>
+ </section>
+
+ <section class="store-section">
+  <div class="section-heading">
+   <div>
+    <h2>Sell Collected Gems</h2>
+    <p>Sell inventory gems for coins. Gems still inside factory storage must be collected first.</p>
+   </div>
+  </div>
+  <div class="store-grid" id="sellGrid"></div>
+ </section>
+
+ <div id="storeStatus" class="form-status store-status" role="status">Loading your store inventory…</div>
+</div>
+
+<nav class="bottom">
+ <a class="nav" href="leaderboard.html"><span>🏆</span>Ranks</a>
+ <a class="nav" href="play.html"><span>🏭</span>Factory</a>
+ <a class="nav" href="profile.html"><span>👤</span>Profile</a>
+ <a class="nav active" href="store.html"><span>🛒</span>Store</a>
+</nav>
+
+<script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8"></script><script src="app.js?v=4.1.0"></script>
+<script src="store.js?v=4.1.0"></script>
+</body>
+</html>

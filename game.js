@@ -208,7 +208,6 @@ function zone(f){
     <div class="factory-actions">
      <button class="run-btn" data-run="${f.name}" ${isMining(f)||(S.stored[f.name]||0)>=storageCapacity(f)?"disabled":""}>${isMining(f)?"Mining…":"Run Mine"}</button>
      <button class="collect-btn" data-collect="${f.name}" ${(S.stored[f.name]||0)<1?"disabled":""}>Collect</button>
-     <button class="sell-btn">Sell 15%</button>
     </div>
    </div>`;
   const row=z.querySelector(".machine-row");
@@ -381,7 +380,6 @@ window.GemGame={
  notify:(m)=>toast(m)
 };
 document.getElementById("boostBtn").onclick=activateBoost;
-document.getElementById("saveBtn").onclick=async()=>{save();if(window.GemCloud)await window.GemCloud.saveCloud(false)};
 (async()=>{
  const session=await window.GV?.requireAuth();
  if(!session)return;
