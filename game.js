@@ -10,10 +10,11 @@ const FACTORIES=[
 ];
 
 function newState(){
- const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},boostUntil:0,autoCollectUntil:0,last:Date.now()};
+ const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},mining:{},boostUntil:0,last:Date.now()};
  FACTORIES.forEach(f=>{
   s.gems[f.name]=0;
   s.stored[f.name]=0;
+  s.mining[f.name]=false;
   s.machines[f.name]=[
    {open:true,level:1},
    {open:false,level:1},
@@ -35,12 +36,13 @@ function normalizeState(state){
  next.unlocked??={Quartz:true};
  next.machines??={};
  next.boostUntil??=0;
- next.autoCollectUntil??=0;
+ next.mining??={};
  next.last??=Date.now();
 
  FACTORIES.forEach(f=>{
   next.gems[f.name]??=0;
   next.stored[f.name]??=0;
+  next.mining[f.name]??=false;
   next.machines[f.name]??=[
    {open:true,level:1},
    {open:false,level:1},
@@ -95,6 +97,7 @@ function openFactory(f){
  S.unlocked[f.name]=true;
  S.machines[f.name]=[{open:true,level:1},{open:false,level:1},{open:false,level:1}];
  S.stored[f.name]=0;
+ S.mining[f.name]=false;
  toast(f.name+" factory opened");
  render()
 }
@@ -125,6 +128,7 @@ function addXp(n){
  }
 }
 function collectFactory(f){
+ stopMining(f);
  const amount=Math.floor(S.stored[f.name]||0);
  if(amount<1){toast("No "+f.name+" ready to collect");return}
  S.stored[f.name]-=amount;
@@ -134,6 +138,25 @@ function collectFactory(f){
  toast("Collected "+fmt(amount)+" "+f.name);
  render()
 }
+function isMining(f){
+ return Boolean(S.mining?.[f.name])
+}
+function startMining(f){
+ if(!S.unlocked[f.name])return;
+ const cap=storageCapacity(f);
+ const stored=S.stored[f.name]||0;
+ if(stored>=cap-0.001){
+  toast(f.name+" batch is full. Collect it first.");
+  return
+ }
+ S.mining[f.name]=true;
+ save(true);
+ render();
+ toast(f.name+" mining started")
+}
+function stopMining(f){
+ S.mining[f.name]=false
+}
 function requirementText(f){
  return Object.entries(f.unlock).map(([k,v])=>fmt(v)+" "+k).concat(f.unlockCoins?[fmt(f.unlockCoins)+" coins"]:[]).join(" • ")
 }
@@ -141,7 +164,7 @@ function machineCard(f,index){
  const m=S.machines[f.name][index],card=document.createElement("div");card.className="machine-card";
  if(m.open){
   card.innerHTML=`
-   <div class="machine running"><div class="head"></div><div class="window"></div><span class="machine-level">${m.level}</span></div>
+   <div class="machine ${isMining(f)?"running":""}"><div class="head"></div><div class="window"></div><span class="machine-level">${m.level}</span></div>
    <div class="machine-label">Machine ${index+1}</div>
    <button class="small-btn">Upgrade</button>
    <div class="cost">${fmt(machineGemCost(f,index))} ${f.name}<br>${fmt(machineCoinCost(f,index))} coins</div>`;
@@ -173,14 +196,24 @@ function zone(f){
     <div class="storage-bar"><i data-storage-bar="${f.name}" style="width:${Math.min(100,(S.stored[f.name]||0)/storageCapacity(f)*100)}%"></i></div>
    </div>
    <div class="summary">
-    <div class="production" data-production="${f.name}"><strong>${fmt(totalGps(f))} gems/sec</strong>Inventory: ${fmt(S.gems[f.name])}<br>${(S.stored[f.name]||0)>=storageCapacity(f)?"Storage full — collect to resume":"Factory is mining into storage."}</div>
-    <div style="display:grid;gap:5px">
+    <div class="production" data-production="${f.name}">
+     <strong>${fmt(totalGps(f))} gems/sec</strong>
+     Inventory: ${fmt(S.gems[f.name])}<br>
+     ${(S.stored[f.name]||0)>=storageCapacity(f)
+       ?'<span class="full-note">Batch complete — collect your gems.</span>'
+       :isMining(f)
+        ?'Mining is running until the batch limit.'
+        :'Factory is idle — press Run Mine.'}
+    </div>
+    <div class="factory-actions">
+     <button class="run-btn" data-run="${f.name}" ${isMining(f)||(S.stored[f.name]||0)>=storageCapacity(f)?"disabled":""}>${isMining(f)?"Mining…":"Run Mine"}</button>
      <button class="collect-btn" data-collect="${f.name}" ${(S.stored[f.name]||0)<1?"disabled":""}>Collect</button>
      <button class="sell-btn">Sell 15%</button>
     </div>
    </div>`;
   const row=z.querySelector(".machine-row");
   [0,1,2].forEach(i=>row.appendChild(machineCard(f,i)));
+  z.querySelector(".run-btn").onclick=()=>startMining(f);
   z.querySelector(".collect-btn").onclick=()=>collectFactory(f);
   z.querySelector(".sell-btn").onclick=()=>sell(f)
  }else{
@@ -223,7 +256,18 @@ function renderTop(){
 
   const production=document.querySelector(`[data-production="${f.name}"]`);
   if(production){
-   production.innerHTML=`<strong>${fmt(totalGps(f))} gems/sec</strong>Inventory: ${fmt(S.gems[f.name])}<br>${full?"Storage full — collect to resume":"Factory is mining into storage."}`;
+   const status=full
+    ?'<span class="full-note">Batch complete — collect your gems.</span>'
+    :isMining(f)
+     ?'Mining is running until the batch limit.'
+     :'Factory is idle — press Run Mine.';
+   production.innerHTML=`<strong>${fmt(totalGps(f))} gems/sec</strong>Inventory: ${fmt(S.gems[f.name])}<br>${status}`;
+  }
+
+  const run=document.querySelector(`[data-run="${f.name}"]`);
+  if(run){
+   run.disabled=isMining(f)||full;
+   run.textContent=isMining(f)?"Mining…":"Run Mine";
   }
 
   const collect=document.querySelector(`[data-collect="${f.name}"]`);
@@ -234,31 +278,24 @@ function tick(){
  const now=Date.now();
  const dt=Math.min(1,(now-S.last)/1000);
  S.last=now;
- const autoActive=(S.autoCollectUntil||0)>now;
 
  FACTORIES.forEach(f=>{
-  if(!S.unlocked[f.name])return;
+  if(!S.unlocked[f.name]||!isMining(f))return;
 
   const cap=storageCapacity(f);
-
-  // First clear any factory that is already full while Auto Collect is active.
-  // This must happen before calculating room, otherwise a full factory stays stopped.
-  if(autoActive && (S.stored[f.name]||0)>=cap-0.000001){
-   collectFactoryAutomatically(f);
-  }
-
-  // Recalculate room after possible automatic collection.
   const current=S.stored[f.name]||0;
   const room=Math.max(0,cap-current);
 
-  if(room>0){
-   const amount=Math.min(room,totalGps(f)*dt);
-   S.stored[f.name]=current+amount;
+  if(room<=0){
+   stopMining(f);
+   return
   }
 
-  // If this production tick filled the storage, collect it immediately.
-  if(autoActive && (S.stored[f.name]||0)>=cap-0.000001){
-   collectFactoryAutomatically(f);
+  S.stored[f.name]=current+Math.min(room,totalGps(f)*dt);
+
+  if(S.stored[f.name]>=cap-0.001){
+   S.stored[f.name]=cap;
+   stopMining(f)
   }
  });
 
@@ -266,55 +303,6 @@ function tick(){
  updateLive();
 }
 
-const AUTO_COLLECT_DURATION=24*60*60*1000;
-function autoCollectTimeLeft(){
- return Math.max(0,(S.autoCollectUntil||0)-Date.now())
-}
-function formatDailyTime(ms){
- const total=Math.ceil(ms/1000);
- const h=Math.floor(total/3600);
- const m=Math.floor((total%3600)/60);
- const s=total%60;
- return h>0?`${h}h ${m}m`:`${m}m ${s}s`
-}
-function updateDailyReward(){
- const button=document.getElementById("dailyRewardBtn");
- const title=document.getElementById("dailyRewardTitle");
- const timer=document.getElementById("dailyRewardTimer");
- if(!button||!title||!timer)return;
- const left=autoCollectTimeLeft();
- const active=left>0;
- button.classList.toggle("active",active);
- button.classList.toggle("ready",!active);
- button.classList.toggle("cooldown",active);
- title.textContent=active?"Auto Collect ON":"Auto Collect";
- timer.textContent=active?formatDailyTime(left):"Redeem 24h";
-}
-function redeemAutoCollect(){
- const left=autoCollectTimeLeft();
- if(left>0){
-  toast(`Auto Collect active for ${formatDailyTime(left)}`);
-  return
- }
- S.autoCollectUntil=Date.now()+AUTO_COLLECT_DURATION;
- FACTORIES.forEach(f=>{
-  if(S.unlocked[f.name] && (S.stored[f.name]||0)>=storageCapacity(f)){
-   collectFactoryAutomatically(f);
-  }
- });
- save(true);
- render();
- updateDailyReward();
- toast("Auto Collect activated for 24 hours");
- window.GemCloud?.saveCloud(true)
-}
-function collectFactoryAutomatically(factory){
- const stored=S.stored[factory.name]||0;
- if(stored<=0)return;
- S.gems[factory.name]=(S.gems[factory.name]||0)+stored;
- gainXp(stored);
- S.stored[factory.name]=0;
-}
 
 function activateBoost(){S.boostUntil=Date.now()+60000;toast("×2 production active for 60 seconds");render()}
 function saveKey(){
@@ -331,10 +319,9 @@ function applyOfflineProgress(state){
  const next=normalizeState(state);
  const now=Date.now();
  const offline=Math.min((now-(next.last||now))/1000,28800);
- const autoWasActive=(next.autoCollectUntil||0)>now;
 
  FACTORIES.forEach(f=>{
-  if(!next.unlocked?.[f.name])return;
+  if(!next.unlocked?.[f.name]||!next.mining?.[f.name])return;
 
   const machines=next.machines?.[f.name]||[];
   let rate=0;
@@ -351,27 +338,17 @@ function applyOfflineProgress(state){
   const cap=Math.floor(baseCap*(1+openCount*.55+totalLevels*.28));
   const produced=rate*offline*.5;
 
-  if(autoWasActive && produced>0){
-   const existing=next.stored[f.name]||0;
-   const total=existing+produced;
-   const fullCollections=Math.floor(total/cap);
-   const collected=fullCollections*cap;
-   next.gems[f.name]=(next.gems[f.name]||0)+collected;
-   next.xp=(next.xp||0)+collected/2;
-   next.stored[f.name]=Math.min(cap,total-collected);
-  }else{
-   next.stored[f.name]=Math.min(cap,(next.stored[f.name]||0)+produced)
+  next.stored[f.name]=Math.min(cap,(next.stored[f.name]||0)+produced);
+  if(next.stored[f.name]>=cap-0.001){
+   next.stored[f.name]=cap;
+   next.mining[f.name]=false
   }
  });
-
- while(next.xp>=xpNeed(next.level)){
-  next.xp-=xpNeed(next.level);
-  next.level++;
- }
 
  next.last=now;
  return next
 }
+
 function loadForCurrentUser(){
  const key=saveKey();
  if(!key)return newState();
@@ -403,7 +380,6 @@ window.GemGame={
  },
  notify:(m)=>toast(m)
 };
-document.getElementById("dailyRewardBtn").onclick=redeemAutoCollect;
 document.getElementById("boostBtn").onclick=activateBoost;
 document.getElementById("saveBtn").onclick=async()=>{save();if(window.GemCloud)await window.GemCloud.saveCloud(false)};
 (async()=>{

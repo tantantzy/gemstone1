@@ -145,3 +145,7 @@ th{color:#cbbbd7}
  background:linear-gradient(160deg,#194f36,#291632);
  box-shadow:0 0 0 4px #17412e,0 0 22px rgba(80,240,145,.55)
 }
+
+.factory-actions{display:grid;grid-template-columns:1fr;gap:6px;min-width:105px}
+.run-btn{border:0;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:900;background:linear-gradient(#8df3a8,#31bd65);color:#08230f}
+.run-btn:disabled{opacity:.5;filter:grayscale(.75);cursor:not-allowed}

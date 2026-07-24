@@ -1,3 +1,20 @@
+# Gemstone Valley v4 — Manual Mining Cycles
+
+Factories no longer mine continuously.
+
+## New cycle
+
+1. Press **Run Mine** on a factory.
+2. The factory mines automatically.
+3. It stops at its level-based maximum batch capacity.
+4. Press **Collect** to move the batch into inventory and receive XP.
+5. The factory remains idle.
+6. Press **Run Mine** again for the next batch.
+
+Machine upgrades increase production speed and maximum batch capacity. A running factory may continue while the player is offline, but it stops as soon as its batch is full.
+
+The 24-hour Auto Collect mechanic has been removed.
+
 # Gemstone Valley v3.4 — Account Isolation & Auto Collect Fix
 
 ## Critical fixes
