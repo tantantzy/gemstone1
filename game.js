@@ -22,14 +22,35 @@ function newState(){
  });
  return s;
 }
-let S=load();
-FACTORIES.forEach(f=>{
- S.gems[f.name]??=0;
- S.stored??={};
- S.stored[f.name]??=0;
- S.machines[f.name]??=[{open:true,level:1},{open:false,level:1},{open:false,level:1}];
-});
-S.unlocked.Quartz=true;
+let CURRENT_USER_ID=null;
+let S=newState();
+
+function normalizeState(state){
+ const next=(state&&typeof state==="object")?state:newState();
+ next.coins??=0;
+ next.level??=1;
+ next.xp??=0;
+ next.gems??={};
+ next.stored??={};
+ next.unlocked??={Quartz:true};
+ next.machines??={};
+ next.boostUntil??=0;
+ next.autoCollectUntil??=0;
+ next.last??=Date.now();
+
+ FACTORIES.forEach(f=>{
+  next.gems[f.name]??=0;
+  next.stored[f.name]??=0;
+  next.machines[f.name]??=[
+   {open:true,level:1},
+   {open:false,level:1},
+   {open:false,level:1}
+  ];
+ });
+
+ next.unlocked.Quartz=true;
+ return next;
+}
 
 function xpNeed(l){return Math.floor(80*Math.pow(l,1.55))}
 function boost(){return Date.now()<S.boostUntil?2:1}
@@ -218,11 +239,11 @@ function tick(){
  FACTORIES.forEach(f=>{
   if(!S.unlocked[f.name])return;
 
-  const cap=storageCap(f);
+  const cap=storageCapacity(f);
 
   // First clear any factory that is already full while Auto Collect is active.
   // This must happen before calculating room, otherwise a full factory stays stopped.
-  if(autoActive && (S.stored[f.name]||0)>=cap){
+  if(autoActive && (S.stored[f.name]||0)>=cap-0.000001){
    collectFactoryAutomatically(f);
   }
 
@@ -236,7 +257,7 @@ function tick(){
   }
 
   // If this production tick filled the storage, collect it immediately.
-  if(autoActive && (S.stored[f.name]||0)>=cap){
+  if(autoActive && (S.stored[f.name]||0)>=cap-0.000001){
    collectFactoryAutomatically(f);
   }
  });
@@ -277,7 +298,7 @@ function redeemAutoCollect(){
  }
  S.autoCollectUntil=Date.now()+AUTO_COLLECT_DURATION;
  FACTORIES.forEach(f=>{
-  if(S.unlocked[f.name] && (S.stored[f.name]||0)>=storageCap(f)){
+  if(S.unlocked[f.name] && (S.stored[f.name]||0)>=storageCapacity(f)){
    collectFactoryAutomatically(f);
   }
  });
@@ -296,52 +317,122 @@ function collectFactoryAutomatically(factory){
 }
 
 function activateBoost(){S.boostUntil=Date.now()+60000;toast("×2 production active for 60 seconds");render()}
-function save(silent=false){localStorage.setItem("gemValleyCompact",JSON.stringify(S));if(!silent)toast("Game saved locally")}
-function load(){
- try{
-  const x=JSON.parse(localStorage.getItem("gemValleyCompact"));if(!x)return newState();
-  const offline=Math.min((Date.now()-(x.last||Date.now()))/1000,28800);
-  FACTORIES.forEach(f=>{
-   if(x.unlocked?.[f.name]){
-    const machines=x.machines?.[f.name]||[];
-    let rate=0;
-    machines.forEach(m=>{
-     if(m.open){
-      const growth=f.levelReq<=6?1.24:f.levelReq<=22?1.18:1.14;
-      rate+=f.base*Math.pow(growth,(m.level||1)-1)
-     }
-    });
-    x.stored??={};
-    const openCount=machines.filter(m=>m.open).length;
-    const totalLevels=machines.reduce((a,m)=>a+(m.open?(m.level||1):0),0);
-    const baseCap=f.levelReq<=6?120:f.levelReq<=22?300:700;
-    const cap=Math.floor(baseCap*(1+openCount*.55+totalLevels*.28));
-    x.stored[f.name]=Math.min(cap,(x.stored[f.name]||0)+rate*offline*.5)
+function saveKey(){
+ return CURRENT_USER_ID?`gemValleyCompact:${CURRENT_USER_ID}`:null
+}
+function save(silent=false){
+ const key=saveKey();
+ if(!key)return;
+ S.last=Date.now();
+ localStorage.setItem(key,JSON.stringify(S));
+ if(!silent)toast("Game saved locally")
+}
+function applyOfflineProgress(state){
+ const next=normalizeState(state);
+ const now=Date.now();
+ const offline=Math.min((now-(next.last||now))/1000,28800);
+ const autoWasActive=(next.autoCollectUntil||0)>now;
+
+ FACTORIES.forEach(f=>{
+  if(!next.unlocked?.[f.name])return;
+
+  const machines=next.machines?.[f.name]||[];
+  let rate=0;
+  machines.forEach(m=>{
+   if(m.open){
+    const growth=f.levelReq<=6?1.24:f.levelReq<=22?1.18:1.14;
+    rate+=f.base*Math.pow(growth,(m.level||1)-1)
    }
   });
-  x.autoCollectUntil??=0;x.last=Date.now();return x
- }catch{return newState()}
+
+  const openCount=machines.filter(m=>m.open).length;
+  const totalLevels=machines.reduce((a,m)=>a+(m.open?(m.level||1):0),0);
+  const baseCap=f.levelReq<=6?120:f.levelReq<=22?300:700;
+  const cap=Math.floor(baseCap*(1+openCount*.55+totalLevels*.28));
+  const produced=rate*offline*.5;
+
+  if(autoWasActive && produced>0){
+   const existing=next.stored[f.name]||0;
+   const total=existing+produced;
+   const fullCollections=Math.floor(total/cap);
+   const collected=fullCollections*cap;
+   next.gems[f.name]=(next.gems[f.name]||0)+collected;
+   next.xp=(next.xp||0)+collected/2;
+   next.stored[f.name]=Math.min(cap,total-collected);
+  }else{
+   next.stored[f.name]=Math.min(cap,(next.stored[f.name]||0)+produced)
+  }
+ });
+
+ while(next.xp>=xpNeed(next.level)){
+  next.xp-=xpNeed(next.level);
+  next.level++;
+ }
+
+ next.last=now;
+ return next
+}
+function loadForCurrentUser(){
+ const key=saveKey();
+ if(!key)return newState();
+ try{
+  const raw=localStorage.getItem(key);
+  if(!raw)return newState();
+  return applyOfflineProgress(JSON.parse(raw))
+ }catch{
+  return newState()
+ }
 }
 let toastTimer;
 function toast(t){
  const e=document.getElementById("toast");e.textContent=t;e.classList.add("show");
  clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove("show"),1700)
 }
-window.GemGame={getState:()=>JSON.parse(JSON.stringify(S)),setState:(n)=>{if(!n||typeof n!=="object")return;S=n;S.gems??={};S.stored??={};S.unlocked??={Quartz:true};S.machines??={};FACTORIES.forEach(f=>{S.gems[f.name]??=0;S.stored[f.name]??=0;S.machines[f.name]??=[{open:true,level:1},{open:false,level:1},{open:false,level:1}]});S.unlocked.Quartz=true;S.autoCollectUntil??=0;S.last=Date.now();save(true);render()},notify:(m)=>toast(m)};
+window.GemGame={
+ getState:()=>JSON.parse(JSON.stringify(S)),
+ setState:(n)=>{
+  S=normalizeState(n);
+  S.last=Date.now();
+  save(true);
+  render()
+ },
+ resetState:()=>{
+  S=newState();
+  save(true);
+  render()
+ },
+ notify:(m)=>toast(m)
+};
 document.getElementById("dailyRewardBtn").onclick=redeemAutoCollect;
 document.getElementById("boostBtn").onclick=activateBoost;
 document.getElementById("saveBtn").onclick=async()=>{save();if(window.GemCloud)await window.GemCloud.saveCloud(false)};
 (async()=>{
  const session=await window.GV?.requireAuth();
  if(!session)return;
+
+ CURRENT_USER_ID=session.user.id;
+ S=loadForCurrentUser();
+
  const account=document.getElementById("accountEmail");
  if(account)account.textContent=session.user.email;
+
  document.getElementById("logoutBtn")?.addEventListener("click",async()=>{
-  await window.GV.client.auth.signOut();location.href="index.html";
+  save(true);
+  await window.GemCloud?.saveCloud(true);
+  await window.GV.client.auth.signOut();
+  location.href="index.html";
  });
- await window.GemCloud?.loadCloud(true);
+
+ // Cloud data belongs only to this Supabase user.
+ // If this account has no cloud state, the fresh/user-specific local state remains.
+ const cloudLoaded=await window.GemCloud?.loadCloud(true);
+ if(!cloudLoaded){
+  save(true);
+  await window.GemCloud?.saveCloud(true);
+ }
+
  render();
  setInterval(tick,250);
- setInterval(()=>localStorage.setItem("gemValleyCompact",JSON.stringify(S)),10000);
+ setInterval(()=>save(true),10000);
  setInterval(()=>window.GemCloud?.saveCloud(true),30000);
 })();

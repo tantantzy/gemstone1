@@ -1,3 +1,42 @@
+# Gemstone Valley v3.4 — Account Isolation & Auto Collect Fix
+
+## Critical fixes
+
+### Separate progress for every account
+
+Local browser saves are now stored using the authenticated Supabase user ID:
+
+```text
+gemValleyCompact:<SUPABASE_USER_ID>
+```
+
+A newly created account no longer reads or uploads another account's local progress.
+
+The old shared key `gemValleyCompact` is intentionally ignored.
+
+### Auto Collect repaired
+
+The production loop previously called a nonexistent `storageCap()` function. The correct function is `storageCapacity()`. That error stopped the mining timer and prevented Auto Collect from running.
+
+This release:
+
+- Uses the correct storage-capacity function.
+- Checks all unlocked factories every production tick.
+- Automatically clears full storage while Auto Collect is active.
+- Immediately resumes mining after collection.
+- Handles floating-point capacity values safely.
+- Applies Auto Collect during offline production when the reward is still active.
+
+## Upload instructions
+
+1. Upload every file to the repository root.
+2. Keep your existing `config.js`.
+3. Wait for GitHub Pages to deploy.
+4. Refresh with Ctrl+Shift+R.
+5. Sign out and sign into each account once.
+
+Each account will now create its own local save and use only its own Supabase `game_saves` row.
+
 # Gemstone Valley v3.3 — Auto Collect Production Fix
 
 ## Fixed
