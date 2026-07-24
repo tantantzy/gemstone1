@@ -1,22 +1,12 @@
-# Gemstone Valley v4.1 — Store Economy
+# Gemstone Valley v5 — Depleting Mine Capacity
 
-## Changes
-
-- Removed the Sell button from every factory card.
-- Replaced the bottom Save tab with a Store tab.
-- Added `store.html` and `store.js`.
-- Players can buy gemstone packs using coins.
-- Gemstone purchases are available only for factories the player has unlocked.
-- Players can sell 25%, 50%, or all of each collected gemstone inventory.
-- Gems inside factory storage cannot be sold until collected.
-- Store transactions save locally and to the player's Supabase cloud row.
-- Autosaving remains active in the game, so the removed Save menu is no longer needed.
-
-## Store economy
-
-- Buying price is approximately 2.5× the gemstone's normal selling value.
-- Selling price uses the gemstone's standard value.
-- Store-bought gemstones can be used for machine upgrades and factory unlock requirements.
+- Press Start Mining.
+- Mine capacity decreases according to gems per second.
+- The same amount becomes Ready to Collect.
+- At zero capacity, mining stops.
+- Press Mine Again to refill the level-based capacity and start a new run.
+- Machine upgrades increase speed and maximum capacity.
+- Store buying and selling remains available.
 
 # Gemstone Valley v4 — Manual Mining Cycles
 

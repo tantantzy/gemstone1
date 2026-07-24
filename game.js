@@ -10,11 +10,12 @@ const FACTORIES=[
 ];
 
 function newState(){
- const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},mining:{},boostUntil:0,last:Date.now()};
+ const s={coins:0,level:1,xp:0,gems:{},stored:{},unlocked:{Quartz:true},machines:{},mining:{},mineRemaining:{},boostUntil:0,last:Date.now()};
  FACTORIES.forEach(f=>{
   s.gems[f.name]=0;
   s.stored[f.name]=0;
   s.mining[f.name]=false;
+  s.mineRemaining[f.name]=0;
   s.machines[f.name]=[
    {open:true,level:1},
    {open:false,level:1},
@@ -37,12 +38,14 @@ function normalizeState(state){
  next.machines??={};
  next.boostUntil??=0;
  next.mining??={};
+ next.mineRemaining??={};
  next.last??=Date.now();
 
  FACTORIES.forEach(f=>{
   next.gems[f.name]??=0;
   next.stored[f.name]??=0;
   next.mining[f.name]??=false;
+  next.mineRemaining[f.name]??=0;
   next.machines[f.name]??=[
    {open:true,level:1},
    {open:false,level:1},
@@ -98,6 +101,7 @@ function openFactory(f){
  S.machines[f.name]=[{open:true,level:1},{open:false,level:1},{open:false,level:1}];
  S.stored[f.name]=0;
  S.mining[f.name]=false;
+ S.mineRemaining[f.name]=0;
  toast(f.name+" factory opened");
  render()
 }
@@ -138,25 +142,22 @@ function collectFactory(f){
  toast("Collected "+fmt(amount)+" "+f.name);
  render()
 }
-function isMining(f){
- return Boolean(S.mining?.[f.name])
+function isMining(f){return Boolean(S.mining?.[f.name])}
+function mineCapacity(f){
+ const ms=S.machines[f.name],open=ms.filter(m=>m.open).length;
+ const levels=ms.reduce((a,m)=>a+(m.open?m.level:0),0);
+ const base=f.levelReq<=6?150:f.levelReq<=22?450:1100;
+ return Math.floor(base*(1+open*.55+levels*.32))
+}
+function remainingMine(f){
+ return Math.max(0,Math.min(mineCapacity(f),Number(S.mineRemaining?.[f.name]||0)))
 }
 function startMining(f){
  if(!S.unlocked[f.name])return;
- const cap=storageCapacity(f);
- const stored=S.stored[f.name]||0;
- if(stored>=cap-0.001){
-  toast(f.name+" batch is full. Collect it first.");
-  return
- }
- S.mining[f.name]=true;
- save(true);
- render();
- toast(f.name+" mining started")
+ if(remainingMine(f)<=0)S.mineRemaining[f.name]=mineCapacity(f);
+ S.mining[f.name]=true;save(true);render();toast(f.name+" mining started")
 }
-function stopMining(f){
- S.mining[f.name]=false
-}
+function stopMining(f){S.mining[f.name]=false}
 function requirementText(f){
  return Object.entries(f.unlock).map(([k,v])=>fmt(v)+" "+k).concat(f.unlockCoins?[fmt(f.unlockCoins)+" coins"]:[]).join(" • ")
 }
@@ -192,21 +193,18 @@ function zone(f){
     <i class="gem" style="--speed:${Math.max(2.1,5-Math.log2(totalGps(f)+1))}s"></i>
    </div>
    <div class="storage-wrap">
-    <div class="storage-line"><span>Factory storage</span><span data-storage-text="${f.name}" class="${(S.stored[f.name]||0)>=storageCapacity(f)?"full-note":""}">${fmt(S.stored[f.name]||0)} / ${fmt(storageCapacity(f))}</span></div>
-    <div class="storage-bar"><i data-storage-bar="${f.name}" style="width:${Math.min(100,(S.stored[f.name]||0)/storageCapacity(f)*100)}%"></i></div>
+    <div class="storage-line"><span>Mine capacity remaining</span><span data-storage-text="${f.name}">${fmt(remainingMine(f))} / ${fmt(mineCapacity(f))}</span></div>
+    <div class="storage-bar"><i data-storage-bar="${f.name}" style="width:${Math.min(100,remainingMine(f)/mineCapacity(f)*100)}%"></i></div>
+    <div class="mined-output">Ready to collect: <strong data-output-text="${f.name}">${fmt(S.stored[f.name]||0)}</strong></div>
    </div>
    <div class="summary">
     <div class="production" data-production="${f.name}">
      <strong>${fmt(totalGps(f))} gems/sec</strong>
      Inventory: ${fmt(S.gems[f.name])}<br>
-     ${(S.stored[f.name]||0)>=storageCapacity(f)
-       ?'<span class="full-note">Batch complete — collect your gems.</span>'
-       :isMining(f)
-        ?'Mining is running until the batch limit.'
-        :'Factory is idle — press Run Mine.'}
+     ${isMining(f)?'Mine capacity is decreasing while gems are produced.':remainingMine(f)<=0?'<span class="full-note">Mine depleted — press Mine Again.</span>':'Factory paused — press Start Mining.'}
     </div>
     <div class="factory-actions">
-     <button class="run-btn" data-run="${f.name}" ${isMining(f)||(S.stored[f.name]||0)>=storageCapacity(f)?"disabled":""}>${isMining(f)?"Mining…":"Run Mine"}</button>
+     <button class="run-btn" data-run="${f.name}" ${isMining(f)?"disabled":""}>${isMining(f)?"Mining…":remainingMine(f)<=0?"Mine Again":"Start Mining"}</button>
      <button class="collect-btn" data-collect="${f.name}" ${(S.stored[f.name]||0)<1?"disabled":""}>Collect</button>
     </div>
    </div>`;
@@ -244,64 +242,39 @@ function renderTop(){
   const cap=storageCapacity(f);
   const full=stored>=cap-0.001;
 
+  const remaining=remainingMine(f),maximum=mineCapacity(f);
   const text=document.querySelector(`[data-storage-text="${f.name}"]`);
-  if(text){
-   text.textContent=`${fmt(stored)} / ${fmt(cap)}`;
-   text.classList.toggle("full-note",full);
-  }
-
+  if(text)text.textContent=`${fmt(remaining)} / ${fmt(maximum)}`;
   const bar=document.querySelector(`[data-storage-bar="${f.name}"]`);
-  if(bar) bar.style.width=Math.min(100,stored/cap*100)+"%";
+  if(bar)bar.style.width=Math.min(100,remaining/maximum*100)+"%";
+  const output=document.querySelector(`[data-output-text="${f.name}"]`);
+  if(output)output.textContent=fmt(stored);
 
   const production=document.querySelector(`[data-production="${f.name}"]`);
   if(production){
-   const status=full
-    ?'<span class="full-note">Batch complete — collect your gems.</span>'
-    :isMining(f)
-     ?'Mining is running until the batch limit.'
-     :'Factory is idle — press Run Mine.';
+   const status=isMining(f)?'Mine capacity is decreasing while gems are produced.':remaining<=0?'<span class="full-note">Mine depleted — press Mine Again.</span>':'Factory paused — press Start Mining.';
    production.innerHTML=`<strong>${fmt(totalGps(f))} gems/sec</strong>Inventory: ${fmt(S.gems[f.name])}<br>${status}`;
   }
 
   const run=document.querySelector(`[data-run="${f.name}"]`);
-  if(run){
-   run.disabled=isMining(f)||full;
-   run.textContent=isMining(f)?"Mining…":"Run Mine";
-  }
-
+  if(run){run.disabled=isMining(f);run.textContent=isMining(f)?"Mining…":remaining<=0?"Mine Again":"Start Mining"}
   const collect=document.querySelector(`[data-collect="${f.name}"]`);
-  if(collect) collect.disabled=stored<1;
+  if(collect)collect.disabled=stored<1;
  });
 }
 function tick(){
- const now=Date.now();
- const dt=Math.min(1,(now-S.last)/1000);
- S.last=now;
-
+ const now=Date.now(),dt=Math.min(1,(now-S.last)/1000);S.last=now;
  FACTORIES.forEach(f=>{
   if(!S.unlocked[f.name]||!isMining(f))return;
-
-  const cap=storageCapacity(f);
-  const current=S.stored[f.name]||0;
-  const room=Math.max(0,cap-current);
-
-  if(room<=0){
-   stopMining(f);
-   return
-  }
-
-  S.stored[f.name]=current+Math.min(room,totalGps(f)*dt);
-
-  if(S.stored[f.name]>=cap-0.001){
-   S.stored[f.name]=cap;
-   stopMining(f)
-  }
+  const remaining=remainingMine(f);
+  if(remaining<=0){S.mineRemaining[f.name]=0;stopMining(f);return}
+  const mined=Math.min(remaining,totalGps(f)*dt);
+  S.mineRemaining[f.name]=Math.max(0,remaining-mined);
+  S.stored[f.name]=(S.stored[f.name]||0)+mined;
+  if(S.mineRemaining[f.name]<=.001){S.mineRemaining[f.name]=0;stopMining(f)}
  });
-
- renderTop();
- updateLive();
+ renderTop();updateLive();
 }
-
 
 function activateBoost(){S.boostUntil=Date.now()+60000;toast("×2 production active for 60 seconds");render()}
 function saveKey(){
@@ -315,37 +288,19 @@ function save(silent=false){
  if(!silent)toast("Game saved locally")
 }
 function applyOfflineProgress(state){
- const next=normalizeState(state);
- const now=Date.now();
- const offline=Math.min((now-(next.last||now))/1000,28800);
-
+ const next=normalizeState(state),now=Date.now(),offline=Math.min((now-(next.last||now))/1000,28800);
  FACTORIES.forEach(f=>{
   if(!next.unlocked?.[f.name]||!next.mining?.[f.name])return;
-
-  const machines=next.machines?.[f.name]||[];
-  let rate=0;
-  machines.forEach(m=>{
-   if(m.open){
-    const growth=f.levelReq<=6?1.24:f.levelReq<=22?1.18:1.14;
-    rate+=f.base*Math.pow(growth,(m.level||1)-1)
-   }
-  });
-
-  const openCount=machines.filter(m=>m.open).length;
-  const totalLevels=machines.reduce((a,m)=>a+(m.open?(m.level||1):0),0);
-  const baseCap=f.levelReq<=6?120:f.levelReq<=22?300:700;
-  const cap=Math.floor(baseCap*(1+openCount*.55+totalLevels*.28));
-  const produced=rate*offline*.5;
-
-  next.stored[f.name]=Math.min(cap,(next.stored[f.name]||0)+produced);
-  if(next.stored[f.name]>=cap-0.001){
-   next.stored[f.name]=cap;
-   next.mining[f.name]=false
-  }
+  const ms=next.machines?.[f.name]||[];let rate=0;
+  ms.forEach(m=>{if(m.open){const growth=f.levelReq<=6?1.24:f.levelReq<=22?1.18:1.14;rate+=f.base*Math.pow(growth,(m.level||1)-1)}});
+  const open=ms.filter(m=>m.open).length,levels=ms.reduce((a,m)=>a+(m.open?(m.level||1):0),0);
+  const base=f.levelReq<=6?150:f.levelReq<=22?450:1100,maximum=Math.floor(base*(1+open*.55+levels*.32));
+  const remaining=Math.max(0,Math.min(maximum,Number(next.mineRemaining?.[f.name]||0)));
+  const mined=Math.min(remaining,rate*offline*.5);
+  next.mineRemaining[f.name]=Math.max(0,remaining-mined);next.stored[f.name]=(next.stored[f.name]||0)+mined;
+  if(next.mineRemaining[f.name]<=.001){next.mineRemaining[f.name]=0;next.mining[f.name]=false}
  });
-
- next.last=now;
- return next
+ next.last=now;return next
 }
 
 function loadForCurrentUser(){

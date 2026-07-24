@@ -150,31 +150,4 @@ th{color:#cbbbd7}
 .run-btn{border:0;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:900;background:linear-gradient(#8df3a8,#31bd65);color:#08230f}
 .run-btn:disabled{opacity:.5;filter:grayscale(.75);cursor:not-allowed}
 
-.store-shell{padding-bottom:100px}
-.store-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:24px}
-.store-hero h1{margin:0 0 6px}
-.store-hero p{margin:0;color:var(--muted);line-height:1.5}
-.store-balance{min-width:150px;text-align:right;background:#170e22;border:1px solid #604474;border-radius:15px;padding:13px}
-.store-balance small{display:block;color:var(--muted)}
-.store-balance strong{display:block;font-size:27px;color:#ffe172}
-.store-section{margin:25px 0}
-.section-heading h2{margin:0 0 5px}
-.section-heading p{margin:0 0 14px;color:var(--muted)}
-.store-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.store-card{background:linear-gradient(145deg,#2d1a41,#21152f);border:1px solid #74528a;border-radius:16px;padding:14px}
-.store-card-locked{opacity:.58;filter:saturate(.5)}
-.store-card-head{display:flex;align-items:center;gap:10px}
-.store-card-head h3{margin:0;font-size:16px}
-.store-card-head small{color:var(--muted)}
-.store-gem{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#160d21;border:1px solid #6f4d84;font-size:24px}
-.store-price{margin:12px 0 9px;color:#ffe172;font-size:12px;font-weight:850}
-.store-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.store-actions button{border:0;border-radius:9px;padding:8px 4px;background:linear-gradient(#72f5a0,#31bd65);color:#08230f;font-size:10px;font-weight:900}
-.store-actions button:last-child{background:linear-gradient(#ffe779,#eab327);color:#2b1a00}
-.store-actions button:disabled{opacity:.38;filter:grayscale(1);cursor:not-allowed}
-.store-status{position:sticky;bottom:82px;z-index:20}
-@media(max-width:640px){
- .store-hero{align-items:stretch;flex-direction:column}
- .store-balance{text-align:left;min-width:0}
- .store-grid{grid-template-columns:1fr}
-}
+.mined-output{margin-top:5px;font-size:10px;color:var(--muted)}.mined-output strong{color:white}
